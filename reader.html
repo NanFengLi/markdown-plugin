@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>本地 Markdown 阅读器</title>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="文档导航">
+        <div class="sidebar-header">
+          <div class="segmented" role="tablist" aria-label="导航模式">
+            <button id="files-tab" class="segment is-active" role="tab" aria-selected="true" title="文件目录">
+              <span class="icon icon-folder" aria-hidden="true"></span>
+              <span class="segment-label">目录</span>
+            </button>
+            <button id="outline-tab" class="segment" role="tab" aria-selected="false" title="文档大纲">
+              <span class="icon icon-outline" aria-hidden="true"></span>
+              <span class="segment-label">大纲</span>
+            </button>
+          </div>
+
+          <button id="search-toggle" class="icon-button" title="搜索文件（Ctrl/⌘ + F）" aria-label="搜索文件">
+            <span class="icon icon-search" aria-hidden="true"></span>
+          </button>
+          <button id="sort-toggle" class="icon-button" title="排序和显示选项" aria-label="排序和显示选项" aria-expanded="false">
+            <span class="icon icon-sliders" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div id="search-panel" class="search-panel" hidden>
+          <span class="icon icon-search" aria-hidden="true"></span>
+          <input id="search-input" type="search" placeholder="搜索 Markdown 文件…" autocomplete="off" />
+          <button id="search-clear" class="text-button" type="button">清除</button>
+        </div>
+
+        <div id="sort-menu" class="popover sort-menu" hidden>
+          <div class="popover-section">
+            <div class="popover-label">排序依据</div>
+            <div class="option-grid" role="radiogroup" aria-label="排序依据">
+              <button class="option-button" data-sort-key="name">名称</button>
+              <button class="option-button" data-sort-key="size">大小</button>
+              <button class="option-button" data-sort-key="modified">修改时间</button>
+            </div>
+          </div>
+          <div class="popover-section">
+            <button id="direction-toggle" class="menu-row" type="button">
+              <span>排序方向</span><span id="direction-label">升序 ↑</span>
+            </button>
+            <label class="menu-row"><span>文件夹置顶</span><input id="folders-first" type="checkbox" /></label>
+            <label class="menu-row"><span>显示隐藏文件</span><input id="show-hidden" type="checkbox" /></label>
+          </div>
+          <div class="popover-section tree-depth-controls">
+            <span>目录展开层级</span>
+            <div class="stepper">
+              <button id="depth-less" type="button" aria-label="减少展开层级">−</button>
+              <output id="depth-output">1 层</output>
+              <button id="depth-more" type="button" aria-label="增加展开层级">＋</button>
+            </div>
+          </div>
+          <button id="collapse-all" class="menu-row full-row" type="button">折叠全部</button>
+        </div>
+
+        <div id="source-bar" class="source-bar" hidden>
+          <div class="source-copy">
+            <span id="source-name" class="source-name"></span>
+            <span id="source-meta" class="source-meta"></span>
+          </div>
+          <button id="add-source" class="icon-button small" type="button" title="添加另一个文件夹" aria-label="添加另一个文件夹">
+            <span class="icon icon-plus" aria-hidden="true"></span>
+          </button>
+          <button id="refresh-source" class="icon-button small" type="button" title="重新扫描文件夹" aria-label="重新扫描文件夹">
+            <span class="icon icon-refresh" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <div id="tree-panel" class="navigation-panel" role="tabpanel" aria-labelledby="files-tab">
+          <div id="tree-empty" class="side-empty">
+            <img src="assets/logo.svg" alt="" />
+            <h2>打开 Markdown</h2>
+            <p>可连续添加多个文件夹，并沿各自目录逐级浏览文档。</p>
+            <button id="open-folder-side" class="primary-button" type="button">选择文件夹</button>
+            <button id="open-file-side" class="secondary-button" type="button">打开单个文件</button>
+          </div>
+          <div id="file-tree" class="tree" role="tree" aria-label="Markdown 文件目录"></div>
+          <div id="no-search-results" class="side-message" hidden>没有匹配的 Markdown 文件</div>
+        </div>
+
+        <div id="outline-panel" class="navigation-panel" role="tabpanel" aria-labelledby="outline-tab" hidden>
+          <nav id="outline-tree" class="outline-tree" aria-label="当前文档大纲"></nav>
+          <div id="outline-empty" class="side-message">打开文档后将在这里显示标题大纲</div>
+        </div>
+
+        <div class="sidebar-footer">
+          <span><i class="status-dot"></i>本地读取，不上传</span>
+          <button id="help-button" class="text-button" type="button">快捷键</button>
+        </div>
+      </aside>
+
+      <main id="main" class="main">
+        <header class="topbar">
+          <button id="sidebar-toggle" class="icon-button" type="button" title="收起/展开侧栏" aria-label="收起或展开侧栏">
+            <span class="icon icon-sidebar" aria-hidden="true"></span>
+          </button>
+          <div id="breadcrumb" class="breadcrumb">本地 Markdown 阅读器</div>
+          <div class="topbar-actions">
+            <button id="open-file-top" class="toolbar-button" type="button">打开文件</button>
+            <button id="open-folder-top" class="toolbar-button prominent" type="button">添加文件夹</button>
+            <button id="theme-toggle" class="icon-button" type="button" title="切换主题" aria-label="切换主题">
+              <span id="theme-icon" class="theme-glyph" aria-hidden="true">◐</span>
+            </button>
+          </div>
+        </header>
+
+        <div id="drop-zone" class="drop-zone" hidden>
+          <div><span class="drop-icon">↓</span><strong>拖到这里打开</strong><small>支持 Markdown 文件或文件夹</small></div>
+        </div>
+
+        <div id="loading" class="loading" hidden>
+          <span class="spinner"></span><span id="loading-label">正在读取…</span>
+        </div>
+
+        <section id="welcome" class="welcome">
+          <img src="assets/logo.svg" alt="" class="welcome-logo" />
+          <p class="eyebrow">LOCAL · PRIVATE · FAST</p>
+          <h1>把本地 Markdown<br />变成安静的阅读空间</h1>
+          <p class="welcome-lead">同时读取多个文件夹、浏览层级目录、跟随文档大纲。所有内容只留在你的浏览器和电脑中。</p>
+          <div class="welcome-actions">
+            <button id="open-folder-welcome" class="primary-button large" type="button">选择 Markdown 文件夹</button>
+            <button id="open-file-welcome" class="secondary-button large" type="button">打开单个文件</button>
+          </div>
+          <div class="feature-row">
+            <div><span>01</span><strong>目录树</strong><small>逐级展开与搜索</small></div>
+            <div><span>02</span><strong>文档大纲</strong><small>标题定位与滚动跟随</small></div>
+            <div><span>03</span><strong>灵活排序</strong><small>名称、大小、时间</small></div>
+          </div>
+          <div id="restore-card" class="restore-card" hidden>
+            <div><strong id="restore-name">上次打开的文件夹</strong><small>浏览器需要你确认后才能再次读取</small></div>
+            <button id="restore-button" class="secondary-button" type="button">重新连接</button>
+          </div>
+        </section>
+
+        <article id="document" class="markdown-body" hidden></article>
+
+        <button id="back-to-top" class="back-to-top" type="button" title="回到顶部" aria-label="回到顶部" hidden>↑</button>
+      </main>
+    </div>
+
+    <dialog id="shortcut-dialog" class="shortcut-dialog">
+      <form method="dialog">
+        <header><h2>快捷键</h2><button class="icon-button" value="close" aria-label="关闭">×</button></header>
+        <dl>
+          <div><dt>选择文件夹</dt><dd><kbd>Ctrl/⌘</kbd> <kbd>O</kbd></dd></div>
+          <div><dt>打开单个文件</dt><dd><kbd>Ctrl/⌘</kbd> <kbd>Shift</kbd> <kbd>O</kbd></dd></div>
+          <div><dt>搜索文件</dt><dd><kbd>Ctrl/⌘</kbd> <kbd>F</kbd></dd></div>
+          <div><dt>切换目录 / 大纲</dt><dd><kbd>Ctrl/⌘</kbd> <kbd>B</kbd></dd></div>
+          <div><dt>收起 / 展开侧栏</dt><dd><kbd>Ctrl/⌘</kbd> <kbd>\</kbd></dd></div>
+        </dl>
+      </form>
+    </dialog>
+
+    <input id="folder-input" type="file" webkitdirectory multiple hidden />
+    <input id="file-input" type="file" accept=".md,.markdown,.mdown,text/markdown,text/plain" hidden />
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
